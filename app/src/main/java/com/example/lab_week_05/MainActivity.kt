@@ -15,9 +15,19 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 
 
 class MainActivity : AppCompatActivity() {
-    private val retrofit by lazy{
+    private val retrofit by lazy {
+        val client = okhttp3.OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val request = chain.request().newBuilder()
+                    .addHeader("x-api-key", "live_FTLFUXDOwDxeKn2ja8xGFJjUQlnTOp05XiEu8Qv3oyB5EQ7lGuD2P4fUYA2NGSxa")  // ✅ add your API key
+                    .build()
+                chain.proceed(request)
+            }
+            .build()
+
         Retrofit.Builder()
             .baseUrl("https://api.thecatapi.com/v1/")
+            .client(client)
             .addConverterFactory(MoshiConverterFactory.create())
             .build()
     }
@@ -52,18 +62,24 @@ class MainActivity : AppCompatActivity() {
 
             override fun onResponse(call: Call<List<ImageData>>,
                                     response: Response<List<ImageData>>) {
-                if(response.isSuccessful){
+                if (response.isSuccessful) {
                     val image = response.body()
-                    val firstImage = image?.firstOrNull()?.imageUrl.orEmpty()
+                    val firstCat = image?.firstOrNull()
+                    val firstImage = firstCat?.imageUrl.orEmpty()
+                    val breedName = if (!firstCat?.breeds.isNullOrEmpty()) {
+                        firstCat?.breeds?.firstOrNull()?.name ?: "Unknown"
+                    } else {
+                        "Unknown"
+                    }
+
                     if (firstImage.isNotBlank()) {
                         imageLoader.loadImage(firstImage, imageResultView)
                     } else {
                         Log.d(MAIN_ACTIVITY, "Missing image URL")
                     }
-                    apiResponseView.text = getString(R.string.image_placeholder,
-                        firstImage)
-                }
-                else{
+
+                    apiResponseView.text = breedName
+                } else {
                     Log.e(MAIN_ACTIVITY, "Failed to get response\n" +
                             response.errorBody()?.string().orEmpty()
                     )
@@ -71,6 +87,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
     }
+
 
     companion object {
         const val MAIN_ACTIVITY = "MAIN_ACTIVITY"
